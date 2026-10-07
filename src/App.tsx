@@ -1,6 +1,6 @@
 import './App.css'
 import { useRef, useState, useMemo, useEffect, Dispatch, SetStateAction } from 'react'
-import { SearchQuery } from './API'
+import { SearchQuery, GetMaster } from './API'
 import { NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 
 interface RecordItem {
@@ -132,7 +132,7 @@ function List({ results, setResults }: ViewProps) {
       <div className='results'>
         {
           sortedResults.map((result) => (
-            <div key={result.id} className="result" onClick={() => navigate(`/records/${result.id}`)} style={{cursor: 'pointer'}}>
+            <div key={result.id} className="result" onClick={() => navigate(`/records/${result.id}`)}>
               <div className='title'>{result.title} ({result.year})</div>
               <div className='genre'>Genre: {result.genre}</div>
               <div className='country'>Country: {result.country}</div>
