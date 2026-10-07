@@ -1,5 +1,5 @@
 import './App.css'
-import { useRef, useState, useMemo, useEffect, Dispatch, SetStateAction } from 'react'
+import { useRef, useState, useMemo, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { SearchQuery, GetMaster } from './API'
 import { NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 
@@ -67,7 +67,7 @@ function List({ results, setResults }: ViewProps) {
               image = cachedRecord.image
             } else {
               const thumb = await GetMaster(masterId)
-              if (thumb?.data?.images?.[0]) {
+              if (thumb && thumb.data && thumb.data.images[0]) {
                 image = thumb.data.images[0].resource_url
               }
             }
@@ -180,7 +180,7 @@ function Gallery({ results, setResults }: ViewProps) {
               image = cachedRecord.image
             } else {
               const thumb = await GetMaster(masterId)
-              if (thumb?.data?.images?.[0]) {
+              if (thumb && thumb.data && thumb.data.images[0]) {
                 image = thumb.data.images[0].resource_url
               }
             }
@@ -246,7 +246,7 @@ function Details({ results }: { results: RecordItem[] }) {
     if (!sessionRecord && id) {
       const fetchExternalDetails = async () => {
         const response = await GetMaster(Number(id));
-        if (response?.data) {
+        if (response && response.data) {
           setFetchedRecord({
             id: response.data.id,
             title: response.data.title,
