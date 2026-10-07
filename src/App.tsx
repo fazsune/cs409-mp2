@@ -47,24 +47,40 @@ function List({ results, setResults }: ViewProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   
-  const [sortBy, setSortBy] = useState<string>('album')
+  const [sortBy, setSortBy] = useState<string>('title')
   const [sortOrder, setSortOrder] = useState<string>('asc')
 
   const populate = async () => {
     try {
       const query = inputRef?.current?.value
       if (query) {
-        setResults([])
         const response = await SearchQuery(query, 10)
         if (response) {
-          const newResults: RecordItem[] = response.data.results.map((result: any) => ({
-            id: result.master_id || result.id, 
-            title: result.title,
-            country: result.country || 'Unknown',
-            genre: result.genre ? result.genre.join(', ') : 'Unknown',
-            year: result.year || 'Unknown',
-            image: result.cover_image || result.thumb || '', 
-          }))
+          const newResults: RecordItem[] = []
+          for (const result of response.data.results) {
+            const masterId = result.master_id || result.id
+            let image = ''
+            
+            // Check cache in existing results array to avoid redundant API queries
+            const cachedRecord = results.find(r => r.id === masterId)
+            if (cachedRecord && cachedRecord.image) {
+              image = cachedRecord.image
+            } else {
+              const thumb = await GetMaster(masterId)
+              if (thumb?.data?.images?.[0]) {
+                image = thumb.data.images[0].resource_url
+              }
+            }
+
+            newResults.push({
+              id: masterId, 
+              title: result.title,
+              country: result.country || 'Unknown',
+              genre: result.genre ? result.genre.join(', ') : 'Unknown',
+              year: result.year || 'Unknown',
+              image: image, 
+            })
+          }
           setResults(newResults)
         }
       }
@@ -79,8 +95,7 @@ function List({ results, setResults }: ViewProps) {
       let valB: string | number = '';
 
       switch (sortBy) {
-        case 'album':
-        case 'artist':
+        case 'title':
           valA = a.title;
           valB = b.title;
           break;
@@ -88,9 +103,9 @@ function List({ results, setResults }: ViewProps) {
           valA = parseInt(a.year) || 0;
           valB = parseInt(b.year) || 0;
           break;
-        case 'ratings':
-          valA = a.id; 
-          valB = b.id;
+        case 'country':
+          valA = a.country; 
+          valB = b.country;
           break;
         default:
           valA = a.title;
@@ -109,10 +124,9 @@ function List({ results, setResults }: ViewProps) {
         <div className='search-item'>Album Name <input placeholder='Search..' id='query' ref={inputRef}></input></div>
         <div className='search-item'>Sort by
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="album">Album Name</option>
-            <option value="artist">Artist Name</option>
+            <option value="title">Title</option>
             <option value="date">Release Date</option>
-            <option value="ratings">Ratings</option>
+            <option value="country">Country</option>
           </select>
         </div>
         <div className='search-item'>
@@ -153,17 +167,33 @@ function Gallery({ results, setResults }: ViewProps) {
   useEffect(() => {
     const fetchGallery = async () => {
       try {
-        setResults([])
         const response = await SearchQuery('', 30, activeGenre)
         if (response) {
-          const newResults: RecordItem[] = response.data.results.map((result: any) => ({
-            id: result.master_id || result.id,
-            title: result.title,
-            country: result.country || 'Unknown',
-            genre: result.genre ? result.genre.join(', ') : 'Unknown',
-            year: result.year || 'Unknown',
-            image: result.cover_image || result.thumb || '',
-          }))
+          const newResults: RecordItem[] = []
+          for (const result of response.data.results) {
+            const masterId = result.master_id || result.id
+            let image = ''
+            
+            // Check cache in existing results array to avoid redundant API queries
+            const cachedRecord = results.find(r => r.id === masterId)
+            if (cachedRecord && cachedRecord.image) {
+              image = cachedRecord.image
+            } else {
+              const thumb = await GetMaster(masterId)
+              if (thumb?.data?.images?.[0]) {
+                image = thumb.data.images[0].resource_url
+              }
+            }
+
+            newResults.push({
+              id: masterId,
+              title: result.title,
+              country: result.country || 'Unknown',
+              genre: result.genre ? result.genre.join(', ') : 'Unknown',
+              year: result.year || 'Unknown',
+              image: image,
+            })
+          }
           setResults(newResults)
         }
       } catch (error) {
@@ -171,6 +201,8 @@ function Gallery({ results, setResults }: ViewProps) {
       }
     }
     fetchGallery()
+    // Intentionally excluding results from dependency array to prevent effect looping while maintaining closure reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGenre, setResults])
 
 	return (
@@ -204,12 +236,35 @@ function Gallery({ results, setResults }: ViewProps) {
 function Details({ results }: { results: RecordItem[] }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [fetchedRecord, setFetchedRecord] = useState<RecordItem | null>(null)
 
   const currentIndex = results.findIndex((r) => r.id.toString() === id)
-  const record = results[currentIndex]
+  const sessionRecord = results[currentIndex]
+
+  useEffect(() => {
+    // If accessing details view via direct URL without session results, fetch it.
+    if (!sessionRecord && id) {
+      const fetchExternalDetails = async () => {
+        const response = await GetMaster(Number(id));
+        if (response?.data) {
+          setFetchedRecord({
+            id: response.data.id,
+            title: response.data.title,
+            country: response.data.country || 'Unknown',
+            genre: response.data.genres ? response.data.genres.join(', ') : 'Unknown',
+            year: response.data.year || 'Unknown',
+            image: response.data.images?.[0]?.resource_url || ''
+          });
+        }
+      }
+      fetchExternalDetails();
+    }
+  }, [id, sessionRecord]);
+
+  const record = sessionRecord || fetchedRecord;
 
   if (!record) {
-    return <div className="details-error">Record not found in the current session. Please search again.</div>
+    return <div className="details-error">Loading Record...</div>
   }
 
 	return (
@@ -224,22 +279,26 @@ function Details({ results }: { results: RecordItem[] }) {
           <p><strong>ID:</strong> {record.id}</p>
         </div>
       </div>
-      <div className="details-navigation">
-        <button 
-          className="nav-btn" 
-          disabled={currentIndex <= 0} 
-          onClick={() => navigate(`/records/${results[currentIndex - 1].id}`)}
-        >
-          Previous
-        </button>
-        <button 
-          className="nav-btn" 
-          disabled={currentIndex >= results.length - 1 || currentIndex === -1} 
-          onClick={() => navigate(`/records/${results[currentIndex + 1].id}`)}
-        >
-          Next
-        </button>
-      </div>
+      
+      {/* Only render next/prev navigation arrows if coming from a List/Gallery active query session */}
+      {sessionRecord && (
+        <div className="details-navigation">
+          <button 
+            className="nav-btn" 
+            disabled={currentIndex <= 0} 
+            onClick={() => navigate(`/records/${results[currentIndex - 1].id}`)}
+          >
+            Previous
+          </button>
+          <button 
+            className="nav-btn" 
+            disabled={currentIndex >= results.length - 1 || currentIndex === -1} 
+            onClick={() => navigate(`/records/${results[currentIndex + 1].id}`)}
+          >
+            Next
+          </button>
+        </div>
+      )}
 		</div>
 	)
 }
