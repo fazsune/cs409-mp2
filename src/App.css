@@ -1,61 +1,79 @@
+h1 {
+  margin-bottom: 50px;
+}
 
+footer {
+  margin-top: 100px;
+}
 
-#next-steps ul {
-  list-style: none;
-  padding: 0;
+nav {
   display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
+  align-items: center;
+  justify-content: center;
+}
 
-  .logo {
-    height: 18px;
+.nav-btn {
+  padding: 25px;
+  font-size: 24px;
+  text-decoration: none;
+  &, &:visited, &:hover, &:active {
+    color: inherit;
   }
+  width: 150px;
+}
 
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
+.main {
+  margin-top: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
+.search {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(170, 59, 255, 0.1);
+  width: 450px;
+}
+
+.search-item {
+  margin: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  input {
+    max-width: 250px;
+  }
+  label {
+    padding: 5px;
+  }
+}
+
+.results {
+  margin: 25px;
+  display: flex;
+  flex-direction: column;
+
+  .result {
+    margin: 5px;
+    border: #6b6b6c 1px;
+    border-style: solid;
+    background-color: rgba(108, 59, 255, 0.1);
+    align-items: baseline;
+    justify-content: left;
+    padding: 10px;
+    .image {
+      height: 75px;
+      margin-top: 10px;
+    }
     &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
+      background-color: rgba(178, 152, 255, 0.1);
     }
   }
 }
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
 
 .ticks {
   position: relative;

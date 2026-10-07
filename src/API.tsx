@@ -4,7 +4,7 @@ const client = axios.create({
   timeout: 5000,
   headers: {
     'User-Agent': 'Discseeker/1.0 +https://fazsune.github.io/cs409-mp2/',
-    'Authorization': 'Discogs key=' + import.meta.env.discogs_key + ' secret=' + import.meta.env.discogs_secret
+    'Authorization': 'Discogs key=' + import.meta.env.DISCOGS_KEY + ' secret=' + import.meta.env.DISCOGS_SECRET
   },
 }) // TODO: respect X-Discogs-Ratelimit
 
