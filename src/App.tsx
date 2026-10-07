@@ -167,7 +167,7 @@ function Gallery({ results, setResults }: ViewProps) {
   useEffect(() => {
     const fetchGallery = async () => {
       try {
-        const response = await SearchQuery('', 30, activeGenre)
+        const response = await SearchQuery('', 10, activeGenre)
         if (response) {
           const newResults: RecordItem[] = []
           for (const result of response.data.results) {

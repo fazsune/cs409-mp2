@@ -3,3 +3,9 @@ The Details View needs to be fully implemented, as well as the Gallery View. See
 For the Gallery, call the discogs API at 'database/search' with per_page set to 30. For the Gallery filter, have a line of buttons corresponding to various music genres (the leftmost should be 'All' for no filtering). Be sure that clicking an item in the Gallery also takes you to that item's Details View. The Gallery should use a similar results implementation to the List View, except that it only displays the image instead of all information. Design the Gallery to be relatively responsive and able to fill the screen with just the 30 albums.
 For Details View, design a simple flexbox for displaying information using the info from the Record interface. Allow for extensibility for more info to be easily added. For the previous/next functionality, reuse the results array to go back and forth from the item a user selects from the List/Gallery view. Grey out the previous/next buttons accordingly if the user hits the beginning/end of the array.
 Diff the changes you make to App.tsx and API.tsx.
+
+Some adjustments to add:
+- The original implementation of getting images via `await GetMaster(result.master_id)` is intentional. The Discogs API does not have the image URLs in the initial data returned by SearchQuery so a workaround is needed. Be sure to keep the image data cached in the results array so that we don't have to query the API for it again.
+- In the sort by options, remove the unneeded `Artist Name`, rename `Album Name` to `Title`, and replace `Ratings` with `Country` for an alphabetical country sort.
+- Instead of showing the error "Record not found in the current session. Please search again.", use GetMaster(id) with the id equal to the id in the requested url (/records/:id). Don't show any arrows since the query doesn't come from List/Gallery view.
+- Provide any changes to App.tsx (and App.css if necessary).
