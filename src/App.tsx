@@ -1,18 +1,24 @@
 import './App.css'
-import { useRef, useState } from 'react'
-import { SearchQuery, GetMaster } from './API'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { useRef, useState, useMemo, useEffect, Dispatch, SetStateAction } from 'react'
+import { SearchQuery } from './API'
+import { NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 
-interface Record {
-  id: number,
-  title: string | any;
-  country: string | any;
-  genre: string | any;
-  year: string | any;
-  image: string | any;
+interface RecordItem {
+  id: number;
+  title: string;
+  country: string;
+  genre: string;
+  year: string;
+  image: string;
+}
+
+interface ViewProps {
+  results: RecordItem[];
+  setResults: Dispatch<SetStateAction<RecordItem[]>>;
 }
 
 function App() {
+  const [results, setResults] = useState<RecordItem[]>([])
 
   return (
     <>
@@ -23,11 +29,11 @@ function App() {
       </nav>
       <div className='main'>
         <Routes>
-          <Route path='/' element={<List />} />
-          <Route path='/list' element={<List />} />
-          <Route path='/gallery' element={<Gallery />} />
-          <Route path='/record/:id' element={<Details />} />
-          <Route path='*' element={<List />} />
+          <Route path='/' element={<List results={results} setResults={setResults} />} />
+          <Route path='/list' element={<List results={results} setResults={setResults} />} />
+          <Route path='/gallery' element={<Gallery results={results} setResults={setResults} />} />
+          <Route path='/records/:id' element={<Details results={results} />} />
+          <Route path='*' element={<List results={results} setResults={setResults} />} />
         </Routes>
       </div>
       <footer>
@@ -37,35 +43,28 @@ function App() {
   )
 }
 
-
-function List() {
+function List({ results, setResults }: ViewProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [results, setResults] = useState<Record[]>([])
+  const navigate = useNavigate()
+  
+  const [sortBy, setSortBy] = useState<string>('album')
+  const [sortOrder, setSortOrder] = useState<string>('asc')
 
   const populate = async () => {
     try {
       const query = inputRef?.current?.value
       if (query) {
         setResults([])
-        const response = await SearchQuery(query)
+        const response = await SearchQuery(query, 10)
         if (response) {
-          console.log(response.data)
-          var newResults: Record[] = []
-          for (const result of response.data.results) {
-            const thumb = await GetMaster(result.master_id)
-            var image: string = '';
-            if (thumb) {
-              image = thumb.data.images[0].resource_url
-            }
-            newResults.push({
-              id: result.master_id,
-              title: result.title,
-              country: result.country,
-              genre: result.genre,
-              year: result.year,
-              image: image,
-            })
-          }
+          const newResults: RecordItem[] = response.data.results.map((result: any) => ({
+            id: result.master_id || result.id, 
+            title: result.title,
+            country: result.country || 'Unknown',
+            genre: result.genre ? result.genre.join(', ') : 'Unknown',
+            year: result.year || 'Unknown',
+            image: result.cover_image || result.thumb || '', 
+          }))
           setResults(newResults)
         }
       }
@@ -74,12 +73,42 @@ function List() {
     }
   }
 
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      switch (sortBy) {
+        case 'album':
+        case 'artist':
+          valA = a.title;
+          valB = b.title;
+          break;
+        case 'date':
+          valA = parseInt(a.year) || 0;
+          valB = parseInt(b.year) || 0;
+          break;
+        case 'ratings':
+          valA = a.id; 
+          valB = b.id;
+          break;
+        default:
+          valA = a.title;
+          valB = b.title;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [results, sortBy, sortOrder]);
+
 	return (
     <>
       <div className='search'>
         <div className='search-item'>Album Name <input placeholder='Search..' id='query' ref={inputRef}></input></div>
         <div className='search-item'>Sort by
-          <select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             <option value="album">Album Name</option>
             <option value="artist">Artist Name</option>
             <option value="date">Release Date</option>
@@ -88,12 +117,12 @@ function List() {
         </div>
         <div className='search-item'>
           <form>
-          <label>Ascending
-            <input name='sort' type='radio' value='asc'></input>
-          </label>
-          <label>Descending
-            <input name='sort' type='radio' value='desc'></input>
-          </label>
+            <label>Ascending
+              <input name='sort' type='radio' value='asc' checked={sortOrder === 'asc'} onChange={(e) => setSortOrder(e.target.value)}></input>
+            </label>
+            <label>Descending
+              <input name='sort' type='radio' value='desc' checked={sortOrder === 'desc'} onChange={(e) => setSortOrder(e.target.value)}></input>
+            </label>
           </form>
         </div>
         <button className='search-item' onClick={() => populate()}>
@@ -102,12 +131,12 @@ function List() {
       </div>
       <div className='results'>
         {
-          results.map((result) => (
-            <div key={result.id} className="result">
+          sortedResults.map((result) => (
+            <div key={result.id} className="result" onClick={() => navigate(`/records/${result.id}`)} style={{cursor: 'pointer'}}>
               <div className='title'>{result.title} ({result.year})</div>
               <div className='genre'>Genre: {result.genre}</div>
               <div className='country'>Country: {result.country}</div>
-              <img className='image' src={result.image}></img>
+              {result.image && <img className='image' src={result.image} alt={result.title} />}
             </div>
           ))
         }
@@ -116,23 +145,103 @@ function List() {
 	)
 }
 
+function Gallery({ results, setResults }: ViewProps) {
+  const [activeGenre, setActiveGenre] = useState<string>('All')
+  const genres = ['All', 'Rock', 'Electronic', 'Pop', 'Hip Hop', 'Jazz']
+  const navigate = useNavigate()
 
-function Gallery() {
+  useEffect(() => {
+    const fetchGallery = async () => {
+      try {
+        setResults([])
+        const response = await SearchQuery('', 30, activeGenre)
+        if (response) {
+          const newResults: RecordItem[] = response.data.results.map((result: any) => ({
+            id: result.master_id || result.id,
+            title: result.title,
+            country: result.country || 'Unknown',
+            genre: result.genre ? result.genre.join(', ') : 'Unknown',
+            year: result.year || 'Unknown',
+            image: result.cover_image || result.thumb || '',
+          }))
+          setResults(newResults)
+        }
+      } catch (error) {
+        console.warn(error)
+      }
+    }
+    fetchGallery()
+  }, [activeGenre, setResults])
+
 	return (
     <>
-      gallery
+      <div className="gallery-filters">
+        {genres.map((genre) => (
+          <button 
+            key={genre} 
+            className={activeGenre === genre ? 'active-filter' : ''} 
+            onClick={() => setActiveGenre(genre)}
+          >
+            {genre}
+          </button>
+        ))}
+      </div>
+      <div className="gallery-grid">
+        {results.map((result) => (
+          <div key={result.id} className="gallery-item" onClick={() => navigate(`/records/${result.id}`)}>
+            {result.image ? (
+              <img src={result.image} alt={result.title} />
+            ) : (
+              <div className="no-image">{result.title}</div>
+            )}
+          </div>
+        ))}
+      </div>
 		</>
 	)
 }
 
+function Details({ results }: { results: RecordItem[] }) {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
-function Details() {
+  const currentIndex = results.findIndex((r) => r.id.toString() === id)
+  const record = results[currentIndex]
+
+  if (!record) {
+    return <div className="details-error">Record not found in the current session. Please search again.</div>
+  }
+
 	return (
-    <>
-      details
-		</>
+    <div className="details-container">
+      <div className="details-card">
+        {record.image && <img className="details-image" src={record.image} alt={record.title} />}
+        <div className="details-info">
+          <h2>{record.title}</h2>
+          <p><strong>Year:</strong> {record.year}</p>
+          <p><strong>Genre:</strong> {record.genre}</p>
+          <p><strong>Country:</strong> {record.country}</p>
+          <p><strong>ID:</strong> {record.id}</p>
+        </div>
+      </div>
+      <div className="details-navigation">
+        <button 
+          className="nav-btn" 
+          disabled={currentIndex <= 0} 
+          onClick={() => navigate(`/records/${results[currentIndex - 1].id}`)}
+        >
+          Previous
+        </button>
+        <button 
+          className="nav-btn" 
+          disabled={currentIndex >= results.length - 1 || currentIndex === -1} 
+          onClick={() => navigate(`/records/${results[currentIndex + 1].id}`)}
+        >
+          Next
+        </button>
+      </div>
+		</div>
 	)
 }
-
 
 export default App
